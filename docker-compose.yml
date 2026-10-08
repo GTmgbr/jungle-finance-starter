@@ -1,0 +1,75 @@
+x-app-env: &app-env
+  PORT: 3000
+  DATABASE_URL: postgres://jungle:jungle@postgres:5432/jungle_finance
+  SQS_ENDPOINT: http://localstack:4566
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+
+x-app-base: &app-base
+  build: .
+  environment: *app-env
+  command: ["bun", "dist/main.js"]
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    localstack:
+      condition: service_started
+  restart: on-failure
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: jungle
+      POSTGRES_PASSWORD: jungle
+      POSTGRES_DB: jungle_finance
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jungle -d jungle_finance"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  localstack:
+    image: localstack/localstack:4.6
+    environment:
+      SERVICES: sqs
+      AWS_DEFAULT_REGION: us-east-1
+      SQS_ENDPOINT_STRATEGY: path
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./localstack/init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh:ro
+
+  migrate:
+    build: .
+    environment: *app-env
+    command: ["bun", "dist/database/migrate.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *app-base
+    ports:
+      - "3000:3000"
+
+  api2:
+    <<: *app-base
+    profiles: ["concurrency"]
+    ports:
+      - "3001:3000"
+
+  api3:
+    <<: *app-base
+    profiles: ["concurrency"]
+    ports:
+      - "3002:3000"
+
+volumes:
+  postgres_data:

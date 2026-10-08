@@ -1,0 +1,34 @@
+{
+  "name": "jungle-finance-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "bun dist/main.js",
+    "start:dev": "bun run build && bun run start",
+    "migration:run": "bun dist/database/migrate.js",
+    "migration:revert": "bun dist/database/revert.js",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:integration": "TEST_BASE_URL=http://localhost:3000 bun test tests/concurrency.test.ts tests/stage2.test.ts",
+    "test:multi": "TEST_MULTI_INSTANCE=1 bun test tests/multi-instance.test.ts",
+    "test:recovery": "TEST_RECOVERY=1 bun test tests/recovery.test.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.883.0",
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "decimal.js": "^10.6.0",
+    "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "typeorm": "^0.3.26"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.22",
+    "@types/node": "^22.18.0",
+    "typescript": "^5.9.2",
+    "@types/express": "^5.0.3"
+  }
+}
