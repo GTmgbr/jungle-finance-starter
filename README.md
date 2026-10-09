@@ -17,7 +17,7 @@ No terminal:
 docker compose up -d --build
 docker compose ps
 docker compose logs -f api
-```
+
 > `migrate` executa uma única vez antes de iniciar `api`; as migrations não são disparadas por cada réplica.
 
 Verificar:
