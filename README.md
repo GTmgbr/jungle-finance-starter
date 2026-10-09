@@ -6,7 +6,7 @@ Serviço financeiro distribuído para processamento de operações de apostas re
 
 ## Status da validação
 
-**Última validação informada: 08/10/2026**, em Linux Mint. Foram executados com sucesso **24 testes**: 7 unitários, 7 de integração financeira/SQS, 5 envolvendo três instâncias concorrentes e 5 de recuperação. O comando `bun run typecheck` terminou sem erros e o endpoint `/metrics` respondeu no ambiente local.
+**Validação executada em 08/10/2026**, em Linux Mint. Foram executados com sucesso **24 testes**: 7 unitários, 7 de integração financeira/SQS, 5 envolvendo três instâncias concorrentes e 5 de recuperação. O comando `bun run typecheck` terminou sem erros e o endpoint `/metrics` respondeu no ambiente local.
 
 Após recuperar uma falha de publicação, uma consulta operacional registrou **128 eventos publicados e 0 pendentes na outbox**. Esses números são uma fotografia daquele ambiente de testes, não valores esperados numa instalação nova.
 
@@ -86,7 +86,7 @@ curl -sS -X POST "http://localhost:3000/wallets/$WALLET_ID/reconciliation"
 
 O saldo persistido deve ser `20.00 BRL`, e `consistent` deve ser `true`. A reconciliação utiliza uma fotografia transacional com isolamento `REPEATABLE READ`.
 
-## Testes
+## Testes automatizados
 
 Instale as dependências e execute a verificação de tipos e os testes unitários:
 
@@ -129,17 +129,46 @@ bun run test:recovery
 
 ### Evidências de execução
 
-As evidências abaixo devem ser capturas **reais** do terminal, produzidas no ambiente de desenvolvimento. Elas complementam os testes automatizados: os comandos acima permitem reproduzir os resultados.
+As capturas abaixo correspondem à execução local dos testes no Linux Mint, com PostgreSQL e LocalStack via Docker Compose. Os prints são **evidências complementares**, não substituem os testes reproduzíveis pelos comandos anteriores.
 
-<!-- Após adicionar os arquivos indicados a docs/images/, remova os comentários abaixo.
-![Testes de integração: 7 aprovados, 0 falhas](docs/images/test-integration.png)
+#### 1. Integração financeira e SQS
 
-![Concorrência com três instâncias: 5 aprovados, 0 falhas](docs/images/test-multi.png)
+**Comando:** `bun run test:integration`  
+**Resultado registrado:** 7 testes aprovados, 0 falhas.
 
-![Recuperação após falhas: 5 aprovados, 0 falhas](docs/images/test-recovery.png)
+Cobre idempotência, disputa concorrente por saldo, `REFUND`, `ROLLBACK`, inbox SQS e reentrega sem duplicação de débito.
 
-![Métricas após recuperação: outbox com zero pendências](docs/images/metrics-outbox.png)
--->
+![Testes de integração financeira e SQS: 7 aprovados e 0 falhas](docs/images/test-integration.png)
+
+#### 2. Concorrência distribuída em três instâncias
+
+**Comando:** `bun run test:multi`  
+**Resultado registrado:** 5 testes aprovados, 0 falhas.
+
+Inclui 50 reentregas distribuídas entre três processos, duas apostas concorrendo pelo mesmo saldo, serialização por wallet e paralelismo entre wallets independentes.
+
+![Testes de concorrência distribuída: 5 aprovados e 0 falhas](docs/images/test-multi.png)
+
+#### 3. Recuperação após falhas
+
+**Comando:** `bun run test:recovery`  
+**Resultado registrado:** 5 testes aprovados, 0 falhas.
+
+Abrange constraints de banco, recuperação de lease da Outbox, reinício das três instâncias, retomada de mensagens SQS e encaminhamento de mensagens inválidas à DLQ.
+
+![Testes de recuperação após falhas: 5 aprovados e 0 falhas](docs/images/test-recovery.png)
+
+#### 4. Observabilidade da Transactional Outbox
+
+**Comando:**
+
+```bash
+curl -fsS http://localhost:3000/metrics | grep -E '^jungle_outbox_|^jungle_dlq_depth '
+```
+
+Apresenta os valores reais de eventos pendentes, publicados, eventos que tiveram tentativas anteriores e profundidade estimada da DLQ após os testes. Os números podem mudar entre execuções.
+
+![Métricas reais da Transactional Outbox e DLQ](docs/images/metrics-outbox.png)
 
 ## Observabilidade
 
@@ -153,7 +182,7 @@ curl -fsS http://localhost:3002/metrics   # se o perfil concurrency estiver ativ
 
 **Na agregação:** não some os gauges derivados do PostgreSQL entre as instâncias, pois cada réplica expõe os mesmos valores.
 
-Os endpoints `/health/live` e `/health/ready` não exigem autenticação.
+Os endpoints `/health/live`, `/health/ready` e `/metrics` não exigem autenticação neste ambiente de desafio; não exponha esses endpoints publicamente sem revisar os controles de acesso.
 
 ## API HTTP
 
