@@ -148,17 +148,16 @@ Regras de status: `400` payload inválido, `404` recurso ausente, `409` conflito
 
 ## Evidências e escopo
 
-A bateria executada no Linux Mint incluiu `bun run test`, `bun run test:integration`, `bun run test:multi` e `bun run test:recovery`, totalizando **24 testes aprovados e 0 falhas** na revisão de 8/out/2026. Os cenários incluem duas apostas competindo pelo mesmo saldo, 50 duplicatas distribuídas entre instâncias, reversões, inbox, SQS e recuperação de lease da outbox.
+Os testes foram executados no Linux Mint. Incluíram `bun run test`, `bun run test:integration`, `bun run test:multi` e `bun run test:recovery`, totalizando **24 testes aprovados e 0 falhas**. Os cenários incluem duas apostas competindo pelo mesmo saldo, 50 duplicatas distribuídas entre instâncias, reversões, inbox, SQS e recuperação de lease da outbox.
 
-O relatório de arquitetura em [ARCHITECTURE.md](ARCHITECTURE.md) documenta as decisões, garantias, limitações e riscos ainda abertos.
+O relatório de arquitetura em [ARCHITECTURE.md](ARCHITECTURE.md) documenta as decisões, garantias, limitações e riscos.
 
+## Limitações
 
-## Limitações conhecidas e priorização de entrega
-
-- Autenticação deliberadamente omitida, por ser aceita sem pontos; `NoopAuthGuard` é extensão explícita, não proteção real.
-- Retentativas e deduplicação são garantidas no PostgreSQL; SQS FIFO melhora a operação, mas não fornece exatamente-uma-vez de ponta a ponta.
-- A outbox faz entrega **ao menos uma vez**: após publicar e antes de marcar `published_at`, um crash pode causar publicação repetida; consumidores devem deduplicar por `eventId`.
+- Autenticação omitida, por ser aceita no teste sem pontos; `NoopAuthGuard` é extensão explícita, não proteção real.
+- Retentativas e deduplicação são garantidas no PostgreSQL; SQS FIFO melhora a operação, mas não fornece exatamente uma vez de ponta a ponta.
+- A outbox faz entrega ao menos uma vez: após publicar e antes de marcar `published_at`, um crash pode causar publicação repetida; consumidores devem duplicar pelo `eventId`.
 - O replay por mesma chave usada simultaneamente em wallets distintas ainda pode resultar em conflito de unicidade, documentado em ARCHITECTURE.md.
-- Não foram executados todos os cenários destrutivos de falha injetada exatamente entre commit/ACK nem carga com medidas p50/p95/p99 sob ambiente controlado.
-- O banco e os volumes persistem entre reinícios: nunca use `down -v` sem intenção explícita de apagar saldos.
-- Após `bun install`, **commitar o `bun.lock` gerado** para tornar o build reproduzível.
+- Não foram executados todos os cenários destrutivos de falha injetada exatamente entre commit/ACK nem carga com medidas p50/p95/p99 
+- O banco e os volumes persistem entre reinícios: nunca usar `down -v` sem intenção de apagar saldos.
+- Após `bun install`, commitar o `bun.lock` gerado para tornar o build reproduzível.
