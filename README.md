@@ -6,9 +6,9 @@ Serviço financeiro distribuído para processamento de operações de apostas re
 
 ## Status da validação
 
-**Validação executada em 08/10/2026**, em Linux Mint. Foram executados com sucesso **24 testes**: 7 unitários, 7 de integração financeira/SQS, 5 envolvendo três instâncias concorrentes e 5 de recuperação. O comando `bun run typecheck` terminou sem erros e o endpoint `/metrics` respondeu no ambiente local.
+Validação executada em 09/10/2026, no ambiente Linux Mint. Foram executados com sucesso 24 testes: 7 unitários, 7 de integração financeira/SQS, 5 envolvendo três instâncias concorrentes e 5 de recuperação. O comando `bun run typecheck` terminou sem erros e o endpoint `/metrics` respondeu no ambiente local.
 
-Após recuperar uma falha de publicação, uma consulta operacional registrou **128 eventos publicados e 0 pendentes na outbox**. Esses números são uma fotografia daquele ambiente de testes, não valores esperados numa instalação nova.
+Após recuperar uma falha de publicação, uma consulta operacional registrou 128 eventos publicados e 0 pendentes na outbox. Esses números são uma fotografia daquele ambiente de testes, não valores esperados numa instalação nova.
 
 ## Pré-requisitos
 
