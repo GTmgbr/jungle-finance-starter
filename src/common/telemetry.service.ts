@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 
-/** Métricas locais de observabilidade; NUNCA usadas para garantir idempotência. */
 @Injectable()
 export class TelemetryService {
   private readonly counters: Record<'replays' | 'outboxRetries' | 'sqsRetries' |

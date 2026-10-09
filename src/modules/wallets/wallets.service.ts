@@ -121,7 +121,6 @@ export class WalletsService {
 
   async reconcile(walletId: string): Promise<Record<string, unknown>> {
     requiredUUID(walletId, 'walletId');
-    // REPEATABLE READ garante que saldo e ledger são vistos no mesmo snapshot.
     const result = await this.db.transaction('REPEATABLE READ', async (manager) => {
       const wallet = await manager.findOneBy(WalletRecord, { id: walletId });
       if (!wallet) throw new DomainError('WALLET_NOT_FOUND', 'Wallet não encontrada.');

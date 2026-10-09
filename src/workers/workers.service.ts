@@ -45,7 +45,6 @@ export class WorkersService implements OnModuleInit, OnModuleDestroy {
   }
   async onModuleDestroy(): Promise<void> {
     this.stopping = true;
-    // O polling SQS tem até 5 segundos de long polling; operações em andamento terminam antes do shutdown.
     await Promise.allSettled(this.running);
     this.sqs.destroy();
   }
@@ -60,8 +59,6 @@ export class WorkersService implements OnModuleInit, OnModuleDestroy {
     if (cached) return cached;
     const r = await this.sqs.send(new GetQueueUrlCommand({ QueueName: name }));
     if (!r.QueueUrl) throw new Error(`queue URL missing: ${name}`);
-    // LocalStack pode devolver localhost.localstack.cloud; no container isso aponta
-    // para o próprio processo, não para o serviço localstack. Preservar o path.
     const url = new URL(r.QueueUrl);
     if (process.env.SQS_ENDPOINT) {
       const local = new URL(process.env.SQS_ENDPOINT);
@@ -90,9 +87,6 @@ export class WorkersService implements OnModuleInit, OnModuleDestroy {
   private async outboxOnce(): Promise<void> {
     const due: Array<{ id: string; aggregate_id: string; payload: object; attempts: number }> =
       await this.db.transaction(async manager => {
-        // SELECT sempre retorna as linhas no TypeORM/Postgres. UPDATE ... RETURNING
-        // retornaria [rows, rowCount], portanto nao deve ser usado como array
-        // diretamente. A selecao e a reserva continuam atomicas no mesmo commit.
         const rows: Array<{ id: string; aggregate_id: string; payload: object; attempts: number }> =
           await manager.query(`
           SELECT id, aggregate_id, payload, attempts FROM outbox_messages
@@ -168,8 +162,6 @@ export class WorkersService implements OnModuleInit, OnModuleDestroy {
             log('sqs_wager_committed', { messageId: e.messageId,
               transactionId: result.transactionId, status: result.status });
           } catch (err) {
-            // Mensagens inválidas nunca entrarão no domínio: encaminhar à DLQ e dar ack
-            // SOMENTE após a publicação confirmada na DLQ.
             if (err instanceof DomainError) {
               try {
                 await this.sqs.send(new SendMessageCommand({
@@ -183,7 +175,6 @@ export class WorkersService implements OnModuleInit, OnModuleDestroy {
             } else {
               this.telemetry.sqsRetry();
               errorLog('sqs_transient_retry', err);
-              // A SQS faz redelivery após visibility timeout e redrive ao atingir maxReceiveCount.
             }
           }
           if (shouldAck) {

@@ -8,7 +8,7 @@ export class WageringController {
   @Post('wagering/transactions')
   async submit(@Body() body: unknown, @Headers('idempotency-key') key?: string): Promise<WagerReceipt> {
     const result = await this.service.submit(body, key);
-    // O commit já foi confirmado. Business reject = 422; replay mantém o mesmo status HTTP.
+    //O commit já confirmado. Business reject = 422; replay mantém o mesmo status HTTP.
     if (result.status === 'REJECTED') throw new HttpException(result, 422);
     if (result.status === 'PENDING_REFERENCE' || result.status === 'PENDING') {
       throw new HttpException(result, 202);

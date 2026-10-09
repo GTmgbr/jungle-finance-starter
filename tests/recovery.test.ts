@@ -9,11 +9,7 @@ import {
   SQSClient,
 } from '@aws-sdk/client-sqs';
 
-/**
- * Testes destrutivos SOMENTE para processos da API: reiniciam os tres containers.
- * Executar isoladamente com `bun run test:recovery` e profile concurrency ativo.
- * Nao apagam o banco/volumes. Cada teste usa IDs novos.
- */
+
 const it = process.env.TEST_RECOVERY === '1' ? test : test.skip;
 const HOSTS = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'];
 const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
@@ -131,7 +127,7 @@ it('tres publishers recuperam evento de outbox com lease expirado', async () => 
   const wallet = await createWallet('0.00');
   const eventId = randomUUID();
   const owner = randomUUID();
-  // Evento de diagnostico isolado: nao altera saldo nem ledger.
+  //Evento de diagnostico isolado: nao altera saldo nem ledger.
   const envelope = { eventId, eventType: 'RecoveryProbe', aggregateId: wallet.id,
     correlationId: eventId, occurredAt: new Date().toISOString(), version: 1, data: { probeId: eventId } };
   const encoded = JSON.stringify(envelope).replaceAll("'", "''");
@@ -164,7 +160,7 @@ it('reinicio das 3 instancias preserva saldo, ledger e resposta idempotente', as
     expect((await current(wallet, 1)).version).toBe(2);
     expect((await reconciliation(wallet, 2)).checkedEntries).toBe(2);
   } finally {
-    // Em caso de falha durante o teste, garantir que o ambiente volta a funcionar.
+    //Em caso de falha durante o teste, garantir que o ambiente volta a funcionar
     docker('start', 'api', 'api2', 'api3');
   }
 }, 75_000);

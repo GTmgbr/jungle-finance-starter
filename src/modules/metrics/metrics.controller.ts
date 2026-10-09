@@ -3,7 +3,6 @@ import { GetQueueAttributesCommand, GetQueueUrlCommand, SQSClient } from '@aws-s
 import { DataSource } from 'typeorm';
 import { TelemetryService } from '../../common/telemetry.service';
 
-/** Endpoint Prometheus simples. Contadores locais devem ser coletados de TODAS as replicas. */
 @Controller()
 export class MetricsController implements OnModuleDestroy {
   private readonly sqs = new SQSClient({

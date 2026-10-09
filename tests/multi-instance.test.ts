@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 
-// Roda exclusivamente com `bun run test:multi` e tres instancias do Docker Compose.
+//Roda exclusivamente com `bun run test:multi` e tres instancias do Docker Compose.
 const HOSTS = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'];
 const it = process.env.TEST_MULTI_INSTANCE === '1' ? test : test.skip;
 

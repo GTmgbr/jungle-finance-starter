@@ -100,7 +100,7 @@ export class WageringService {
     let result: WagerReceipt;
     try {
       result = await this.db.transaction('READ COMMITTED', async manager => {
-      // Sempre bloquear a wallet primeiro: evita lost updates e inversão da ordem de locks.
+      //Sempre bloquear a wallet primeiro
       const wallet = await this.lockWallet(manager, input.walletId, input.playerId, input.money.currency);
       const sameKey = await manager.findOneBy(WagerRecord, { idempotencyKey: key });
       const sameExternal = await manager.findOneBy(WagerRecord, {
@@ -141,7 +141,7 @@ export class WageringService {
     return result;
   }
 
-  // Worker recebe IDs candidatos fora da transação, mas bloqueia a wallet e revalida status.
+  //Worker recebe IDs candidatos fora da transação, mas bloqueia a wallet e revalida status
   async retryReference(id: string): Promise<void> {
     const original = await this.db.getRepository(WagerRecord).findOneBy({ id });
     if (!original || original.status !== WagerTransactionStatus.PendingReference) return;
@@ -219,7 +219,7 @@ export class WageringService {
     }
     let entry: WalletLedgerEntry | undefined;
     if (pending && !failure) {
-      // No máximo 8 tentativas (1s, 2s, ...); resultados finais ficam auditáveis.
+      //No máximo 8 tentativas
       if (attempts + 1 >= 8) failure = 'REFERENCE_NOT_FOUND';
       else tx.markPendingReference();
     }
@@ -253,7 +253,6 @@ export class WageringService {
         walletId: tx.walletId, playerId: tx.playerId, roundId: tx.roundId, gameId: tx.gameId,
         kind: tx.kind, amount: tx.money.toString(), currency: tx.money.currency,
         referenceExternalTransactionId: tx.referenceExternalTransactionId ?? null,
-        // Rejeições não reservam a restrição UNIQUE de reversão bem-sucedida.
         referenceTransactionId: failure || pending ? null : reference?.id ?? null,
         status: tx.status, failureCode: tx.failureCode ?? null,
         resultBalance: wallet.balance.toString(), attempts: pending ? 1 : 0,
