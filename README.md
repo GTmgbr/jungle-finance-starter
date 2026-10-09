@@ -8,7 +8,7 @@ Serviço financeiro distribuído para processamento de operações de apostas re
 
 Validação executada em 09/10/2026, no ambiente Linux Mint. Foram executados com sucesso 24 testes: 7 unitários, 7 de integração financeira/SQS, 5 envolvendo três instâncias concorrentes e 5 de recuperação. O comando `bun run typecheck` terminou sem erros e o endpoint `/metrics` respondeu no ambiente local.
 
-Após recuperar uma falha de publicação, uma consulta operacional registrou 128 eventos publicados e 0 pendentes na outbox. Esses números são uma fotografia daquele ambiente de testes, não valores esperados numa instalação nova.
+Após recuperar uma falha de publicação, uma consulta operacional registrou 344 eventos publicados e 0 pendentes na outbox. Esses números são uma fotografia daquele ambiente de testes, não valores esperados numa instalação nova.
 
 ## Pré-requisitos
 
@@ -16,7 +16,7 @@ Após recuperar uma falha de publicação, uma consulta operacional registrou 12
 - Bun 1.x para executar os testes localmente. A aplicação usa Bun também no container.
 - Portas disponíveis: `3000`, `4566`, `5433`; para três instâncias, também `3001` e `3002`.
 
-> A porta `5433` é a porta **no host** para o PostgreSQL do Compose; internamente os containers se comunicam com `postgres:5432`. Ajuste a porta publicada caso ela também esteja ocupada.
+> A porta `5433` é a porta no host para o PostgreSQL do Compose. Internamente os containers se comunicam com `postgres:5432`. Ajustar a porta publicada caso ela também esteja ocupada.
 
 ## Iniciar a aplicação
 
@@ -28,16 +28,16 @@ docker compose ps -a
 docker compose logs --tail=80 api
 ```
 
-O serviço `migrate` é um job de execução pontual durante a subida; ele termina com código `0` após executar as migrations pendentes. Não é necessário executar migrations em cada réplica da API.
+O serviço `migrate` é um job de execução pontual durante a subida. Ele termina com código `0` após executar as migrations pendentes. Não é necessário executar migrations em cada réplica da API.
 
-Verifique os endpoints:
+Verificar endpoints:
 
 ```bash
 curl -i http://localhost:3000/health/live
 curl -i http://localhost:3000/health/ready
 ```
 
-`/health/live` retorna `{"status":"ok"}`. A resposta de `/health/ready` é `200` quando PostgreSQL e a fila SQS requerida estão acessíveis; durante a inicialização do LocalStack, ela pode retornar `503`.
+`/health/live` retorna `{"status":"ok"}`. A resposta de `/health/ready` é `200` quando o PostgreSQL e a fila SQS requerida estão acessíveis. Durante a inicialização do LocalStack, ela pode retornar `503`.
 
 ## Fluxo de demonstração
 
@@ -45,7 +45,7 @@ curl -i http://localhost:3000/health/ready
 
 A abertura com saldo positivo gera uma operação interna `OPENING` e um lançamento `CREDIT` no ledger, dentro da mesma transação SQL.
 
-No Linux, gere um identificador de jogador novo para evitar conflito ao repetir a demonstração:
+No Linux, gerar um identificador de jogador novo para evitar conflito ao repetir a demonstração:
 
 ```bash
 PLAYER_ID="$(cat /proc/sys/kernel/random/uuid)"
@@ -55,10 +55,10 @@ curl -sS -X POST http://localhost:3000/wallets \
   -d "{\"playerId\":\"$PLAYER_ID\",\"initialBalance\":{\"amount\":\"100.00\",\"currency\":\"BRL\"}}"
 ```
 
-Copie o `id` retornado e defina uma variável:
+Copiar o `id` retornado e definir uma variável:
 
 ```bash
-WALLET_ID="COLE_AQUI_O_UUID_RETORNADO"
+WALLET_ID="id_retornado"
 ```
 
 ### 2. Processar uma aposta de R$ 80,00
@@ -74,7 +74,7 @@ curl -i -X POST http://localhost:3000/wagering/transactions \
 
 Resultado esperado: transação `PROCESSED` e saldo `20.00 BRL`.
 
-Execute **novamente a mesma requisição** (sem redefinir `TX_ID`): o retorno deve manter o mesmo `transactionId`, saldo observado na primeira execução e `idempotentReplay: true`. Reutilizar a mesma chave com um valor diferente deve produzir `409 IDEMPOTENCY_CONFLICT`.
+Executar novamente a mesma requisição (sem redefinir `TX_ID`): o retorno deve manter o mesmo `transactionId`, saldo observado na primeira execução e `idempotentReplay: true`. Reutilizar a mesma chave com um valor diferente deve produzir `409 IDEMPOTENCY_CONFLICT`.
 
 ### 3. Consultar wallet, ledger e reconciliação
 
@@ -88,7 +88,7 @@ O saldo persistido deve ser `20.00 BRL`, e `consistent` deve ser `true`. A recon
 
 ## Testes automatizados
 
-Instale as dependências e execute a verificação de tipos e os testes unitários:
+Instalar as dependências e executar a verificação de tipos e os testes unitários:
 
 ```bash
 bun install
@@ -96,7 +96,7 @@ bun run typecheck
 bun run test
 ```
 
-Para integração com PostgreSQL e SQS emulado pelo LocalStack, deixe o Compose em execução e rode:
+Para integração com PostgreSQL e SQS emulado pelo LocalStack, deixar o Compose em execução e rodar:
 
 ```bash
 bun run test:integration
@@ -111,7 +111,7 @@ curl -fsS http://localhost:3002/health/live
 bun run test:multi
 ```
 
-Execute a suíte de recuperação **separadamente**, pois ela interrompe e reinicia temporariamente containers da aplicação:
+Executar a suíte de recuperação separadamente, pois ela interrompe e reinicia temporariamente containers da aplicação:
 
 ```bash
 bun run test:recovery
@@ -125,11 +125,11 @@ bun run test:recovery
 | Recuperação e falhas | `bun run test:recovery` | 5 aprovados |
 | **Total** | | **24 aprovados, 0 falhas** |
 
-> Ao executar `bun run test`, os testes que exigem containers são ignorados intencionalmente; eles são executados pelos comandos específicos acima. Nunca use `docker compose down -v` para simular recuperação: ele remove os volumes, incluindo os dados financeiros.
+> Ao executar `bun run test`, os testes que exigem containers são ignorados intencionalmente. Eles são executados pelos comandos específicos acima. Nunca usar `docker compose down -v` para simular recuperação: ele remove os volumes, incluindo os dados financeiros.
 
 ### Evidências de execução
 
-As capturas abaixo correspondem à execução local dos testes no Linux Mint, com PostgreSQL e LocalStack via Docker Compose. Os prints são **evidências complementares**, não substituem os testes reproduzíveis pelos comandos anteriores.
+As capturas abaixo correspondem à execução local dos testes no meu ambiente, com PostgreSQL e LocalStack via Docker Compose. Os prints são evidências complementares, não substituem os testes reproduzíveis pelos comandos anteriores.
 
 #### 1. Integração financeira e SQS
 
@@ -178,11 +178,9 @@ curl -fsS http://localhost:3001/metrics   # se o perfil concurrency estiver ativ
 curl -fsS http://localhost:3002/metrics   # se o perfil concurrency estiver ativo
 ```
 
-`/metrics` expõe texto no formato Prometheus. Contagem de transações por status, situação da outbox e idade do evento pendente mais antigo são consultadas no PostgreSQL; a profundidade estimada da DLQ vem do SQS. Replays, tentativas de publicação, conflitos de lock e latência são métricas **locais de cada instância** e reiniciam com o processo.
+`/metrics` expõe texto no formato Prometheus. Contagem de transações por status, situação da outbox e idade do evento pendente mais antigo são consultadas no PostgreSQL. A profundidade estimada da DLQ vem do SQS. Replays, tentativas de publicação, conflitos de lock e latência são métricas locais de cada instância e reiniciam com o processo.
 
-**Na agregação:** não some os gauges derivados do PostgreSQL entre as instâncias, pois cada réplica expõe os mesmos valores.
-
-Os endpoints `/health/live`, `/health/ready` e `/metrics` não exigem autenticação neste ambiente de desafio; não exponha esses endpoints publicamente sem revisar os controles de acesso.
+**Na agregação:** não somar gauges derivados do PostgreSQL entre as instâncias, pois cada réplica expõe os mesmos valores.
 
 ## API HTTP
 
@@ -206,35 +204,35 @@ Contratos HTTP: `400` para payload inválido, `404` para recurso inexistente, `4
 A migration inicial está em `src/database/migrations/2026100700000-InitialSchema.ts` e implementa `up` e `down`.
 
 ```bash
-# Após editar uma migration, reconstruir a imagem:
+#Após editar uma migration, reconstruir a imagem:
 docker compose build migrate
 
-# Aplicar migrations pendentes (normalmente executadas durante o up):
+#Aplicar migrations pendentes (normalmente executadas durante o up):
 docker compose run --rm migrate
 
-# Reverter a última migration: DESTRUTIVO; use apenas em ambiente descartável.
+#Reverter a última migration: destrutivo. Usar apenas em ambiente descartável.
 docker compose run --rm migrate bun dist/database/revert.js
 ```
 
-Não use `synchronize: true`.
+Não usar `synchronize: true`.
 
 ## Parar os serviços
 
 ```bash
-# Interromper os serviços mantendo dados e volumes:
+#Interromper os serviços mantendo dados e volumes:
 docker compose --profile concurrency down
 
-# ATENÇÃO: remove também volumes e dados persistidos; somente em ambiente descartável.
+#Remove também volumes e dados persistidos; somente em ambiente descartável.
 # docker compose --profile concurrency down -v
 ```
 
 ## Decisões e limitações conhecidas
 
-- **Autenticação:** omitida conforme permitido pelo desafio (não pontuada). `NoopAuthGuard` é um ponto explícito de extensão, **não** é proteção real.
-- **Entrega:** SQS e outbox operam com semântica *at-least-once*. Após publicação e antes da confirmação no banco, um crash pode gerar publicação duplicada; consumidores devem deduplicar por `eventId`.
-- **Idempotência entre wallets diferentes:** a mesma chave usada simultaneamente em wallets distintas pode resultar em conflito de unicidade genérico; o comportamento está documentado em `ARCHITECTURE.md`.
+- **Autenticação:** omitida conforme permitido pelo desafio. `NoopAuthGuard` é um ponto explícito de extensão, não é proteção real.
+- **Entrega:** SQS e outbox operam com semântica *at-least-once*. Após publicação e antes da confirmação no banco, um crash pode gerar publicação duplicada. Consumidores devem duplicar por `eventId`.
+- **Idempotência entre wallets diferentes:** a mesma chave usada simultaneamente em wallets distintas pode resultar em conflito de unicidade. O comportamento está documentado em `ARCHITECTURE.md`.
 - **Cobertura de falhas:** foram executados testes de reinício, lease expirado e recuperação de mensagens. Não foram injetadas todas as falhas exatamente entre commit e ACK, nem realizada carga com relatório p50/p95/p99.
 - **Observabilidade:** alguns contadores são locais ao processo e não persistem após reinício.
-- **Dados:** volumes preservam o saldo entre reinícios. Não remova volumes inadvertidamente.
+- **Dados:** volumes preservam o saldo entre reinícios.
 
-Mais detalhes sobre decisões, trade-offs e riscos em [ARCHITECTURE.md](ARCHITECTURE.md).
+Mais detalhes sobre as minhas decisões, trade-offs e riscos em [ARCHITECTURE.md](ARCHITECTURE.md).
