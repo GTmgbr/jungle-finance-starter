@@ -2,7 +2,7 @@
 
 Serviço financeiro distribuído para processamento de operações de apostas recebidas de múltiplos provedores. Teste para vaga de estágio back-end.
 
-**Stack utilizada:** NestJS · TypeScript (`strict`) · Bun 1.x · TypeORM · PostgreSQL · AWS SQS (emulado com LocalStack) · Docker Compose.
+**Stack:** NestJS + TypeScript (`strict`) + Bun 1.x + TypeORM + PostgreSQL + AWS SQS (emulado com LocalStack) + Docker Compose.
 
 ## Status da validação
 
