@@ -63,7 +63,7 @@ curl -X POST http://localhost:3000/wallets/WALLET_UUID/reconciliation
 
 A reconciliação usa uma única fotografia transacional (`REPEATABLE READ`).
 
-##Rodar testes
+## Rodar testes
 
 Com Bun 1.x instalado:
 
@@ -95,7 +95,7 @@ bun run test:recovery
 
 O `test:recovery` interrompe temporariamente e reinicia os containers da aplicação; não se deve executar em paralelo a outras suítes. Também nunca deve-se usar `docker compose down -v` para testar recuperação, pois ele apaga os dados.
 
-###Métricas
+### Métricas
 
 Com os serviços ativos:
 
@@ -107,28 +107,28 @@ curl -fsS http://localhost:3002/metrics
 
 `/metrics` expõe formato Prometheus, sem dependências adicionais. Contagens de transações por status, eventos da outbox e lag vêm do PostgreSQL. A profundidade estimada da DLQ vem do SQS. Replays, conflitos de lock, retries observados e latência são locais a cada processo e reiniciam com o container. Coletar as três instâncias para interpretar o total. Os valores SQL são repetidos entre réplicas: não somar esses gauges ao agregá-los.
 
-##Migrations
+## Migrations
 
 A migration inicial está em `src/database/migrations/2026100700000-InitialSchema.ts` e implementa `up` e `down`.
 
-```bash
-# Após editar migrations, reconstrua a imagem:
+
+# Após editar migrations, reconstruir a imagem:
 docker compose build migrate
 # Aplicar migrations (normalmente automático no up):
 docker compose run --rm migrate
 # Reverter a última migration (DESTRUTIVO, executar somente em ambiente descartável):
 docker compose run --rm migrate bun dist/database/revert.js
-```
 
-**Nunca use `synchronize: true`.**
+**Nunca usar `synchronize: true`.**
 
 ## Parar e limpar
 
-```bash
+No terminal:
+
 docker compose down
-# ATENÇÃO: remove também o volume e os saldos gravados
+# Remove também o volume e os saldos gravados
 docker compose down -v
-```
+
 
 ## API HTTP
 
