@@ -1,16 +1,16 @@
-#Jungle Finance 
+# Jungle Finance 
 
 NestJS + TypeScript strict + Bun 1.x + TypeORM + PostgreSQL + SQS (LocalStack).
 
 **Estado verificado (10/out/2026):** foram executados com sucesso 24 testes: 7 unitários (incluindo observabilidade), 7 de integração financeira/SQS, 5 com três instâncias concorrentes e 5 de recuperação. O endpoint `/metrics` respondeu e o `bun run typecheck` terminou sem erros. Em uma consulta operacional, a outbox teve 128 eventos publicados e 0 pendentes após recuperação de falhas. 
 
-##Pré-requisitos
+## Pré-requisitos
 
 - Docker Engine / Docker Desktop com Docker Compose v2.
 - Bun 1.x para executar os testes localmente. O servidor também roda inteiramente em Docker (Bun já incluído na imagem).
 - Portas livres: 3000, 5433, 4566 (também 3001/3002 para modo concorrência).
 
-##Subir o projeto
+## Subir o projeto
 
 No terminal: 
 
@@ -29,7 +29,7 @@ curl http://localhost:3000/health/ready
 
 O primeiro retorna `{"status":"ok"}`. Readiness requer o PostgreSQL e a fila SQS inicializada, podendo responder `503` até LocalStack terminar o hook.
 
-##Fluxo de demonstração
+## Fluxo de demonstração
 
 **1. Criar wallet com R$ 100 (gera OPENING + lançamento CREDIT).**
 
