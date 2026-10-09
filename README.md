@@ -25,6 +25,7 @@ Verificar:
 No terminal:
 
 curl http://localhost:3000/health/live
+
 curl http://localhost:3000/health/ready
 
 O primeiro retorna `{"status":"ok"}`. Readiness requer o PostgreSQL e a fila SQS inicializada, podendo responder `503` até LocalStack terminar o hook.
