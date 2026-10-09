@@ -1,114 +1,112 @@
-# Jungle Finance — serviço financeiro distribuído
+#Jungle Finance 
 
 NestJS + TypeScript strict + Bun 1.x + TypeORM + PostgreSQL + SQS (LocalStack).
 
-**Estado verificado (8/out/2026):** o candidato executou com sucesso 24 testes: 7 unitários (incluindo observabilidade), 7 de integração financeira/SQS, 5 com três instâncias concorrentes e 5 de recuperação. O endpoint `/metrics` respondeu e o `bun run typecheck` terminou sem erros. Em uma consulta operacional, a outbox teve 128 eventos publicados e 0 pendentes após recuperação de falhas. Essas evidências são pontuais e não substituem testes de produção.
+**Estado verificado (10/out/2026):** foram executados com sucesso 24 testes: 7 unitários (incluindo observabilidade), 7 de integração financeira/SQS, 5 com três instâncias concorrentes e 5 de recuperação. O endpoint `/metrics` respondeu e o `bun run typecheck` terminou sem erros. Em uma consulta operacional, a outbox teve 128 eventos publicados e 0 pendentes após recuperação de falhas. 
 
-## Pré-requisitos
+##Pré-requisitos
 
 - Docker Engine / Docker Desktop com Docker Compose v2.
 - Bun 1.x para executar os testes localmente. O servidor também roda inteiramente em Docker (Bun já incluído na imagem).
 - Portas livres: 3000, 5433, 4566 (também 3001/3002 para modo concorrência).
 
-## Subir o projeto
+##Subir o projeto
 
-```bash
+No terminal: 
+
 docker compose up -d --build
 docker compose ps
 docker compose logs -f api
 ```
-
-> `migrate` executa uma única vez antes de iniciar `api`; as migrations **não** são disparadas por cada réplica.
+> `migrate` executa uma única vez antes de iniciar `api`; as migrations não são disparadas por cada réplica.
 
 Verificar:
 
-```bash
+No terminal:
+
 curl http://localhost:3000/health/live
 curl http://localhost:3000/health/ready
-```
 
-O primeiro deve retornar `{"status":"ok"}`. Readiness requer PostgreSQL e fila SQS inicializada, podendo responder `503` até LocalStack terminar o hook.
+O primeiro retorna `{"status":"ok"}`. Readiness requer o PostgreSQL e a fila SQS inicializada, podendo responder `503` até LocalStack terminar o hook.
 
-## Fluxo de demonstração
+##Fluxo de demonstração
 
 **1. Criar wallet com R$ 100 (gera OPENING + lançamento CREDIT).**
 
-```bash
+No terminal:
+
 curl -s -X POST http://localhost:3000/wallets \
   -H 'Content-Type: application/json' \
   -d '{"playerId":"0192f28f-5dc0-7d58-bdb2-814ad6a0f4a1","initialBalance":{"amount":"100.00","currency":"BRL"}}'
-```
 
-Copie o `id` retornado e use nos exemplos seguintes como `WALLET_UUID`.
+Copiar o `id` retornado e usar nos exemplos seguintes como `WALLET_UUID`.
 
 **2. Apostar R$ 80.**
 
-```bash
+No terminal:
+
 curl -i -X POST http://localhost:3000/wagering/transactions \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: provider-a:bet-001' \
   -d '{"providerId":"provider-a","externalTransactionId":"bet-001","playerId":"0192f28f-5dc0-7d58-bdb2-814ad6a0f4a1","walletId":"WALLET_UUID","roundId":"round-1","gameId":"game-1","kind":"BET","money":{"amount":"80.00","currency":"BRL"}}'
-```
 
-Repetir *exatamente* a mesma requisição produz o mesmo `transactionId`, o saldo observado na primeira execução e `idempotentReplay: true`. Alterar o valor mantendo a key produz `409 IDEMPOTENCY_CONFLICT`.
+Repetir exatamente a mesma requisição produz o mesmo `transactionId`, o saldo observado na primeira execução e `idempotentReplay: true`. Se o valor for alterado, e a key for mantida, produzirá `409 IDEMPOTENCY_CONFLICT`.
 
 **3. Consultar wallet, ledger e reconciliação.**
 
-```bash
+No terminal:
+
 curl http://localhost:3000/wallets/WALLET_UUID
 curl 'http://localhost:3000/wallets/WALLET_UUID/ledger?limit=50'
 curl -X POST http://localhost:3000/wallets/WALLET_UUID/reconciliation
-```
 
 A reconciliação usa uma única fotografia transacional (`REPEATABLE READ`).
 
-## Rodar testes
+##Rodar testes
 
 Com Bun 1.x instalado:
 
-```bash
+No terminal:
+
 bun install
 bun test
-```
 
 Com a API e PostgreSQL reais levantados via Compose:
 
-```bash
+No terminal:
+
 bun run test:integration
-```
 
-Os testes de integração HTTP executam apostas concorrentes e repetidas. Para iniciar **três processos de API distintos** usando a mesma wallet e a mesma base:
+Os testes de integração HTTP executam apostas concorrentes e repetidas. Para iniciar três processos de API distintos usando a mesma wallet e a mesma base:
 
-```bash
+No terminal:
+
 docker compose --profile concurrency up -d --build
 curl http://localhost:3001/health/live
 curl http://localhost:3002/health/live
-```
 
 Executar concorrência efetivamente distribuída e recuperação em comandos separados:
 
-```bash
+No terminal:
+
 bun run test:multi
 bun run test:recovery
-```
 
-`test:recovery` interrompe temporariamente e reinicia os containers da aplicação; não executar em paralelo a outras suítes. Nunca usar `docker compose down -v` para testar recuperação: ele apaga os dados.
+O `test:recovery` interrompe temporariamente e reinicia os containers da aplicação; não se deve executar em paralelo a outras suítes. Também nunca deve-se usar `docker compose down -v` para testar recuperação, pois ele apaga os dados.
 
-### Métricas
+###Métricas
 
 Com os serviços ativos:
 
-```bash
+No terminal:
+
 curl -fsS http://localhost:3000/metrics
 curl -fsS http://localhost:3001/metrics
 curl -fsS http://localhost:3002/metrics
-```
 
-`/metrics` expõe formato Prometheus, sem dependências adicionais. Contagens de transações por status, eventos da outbox e lag vêm do PostgreSQL; profundidade estimada da DLQ vem do SQS. Replays, conflitos de lock, retries observados e latência são **locais a cada processo e reiniciam com o container**; coletar as três instâncias para interpretar o total. Os valores SQL são repetidos entre réplicas: **não somar** esses gauges ao agregá-los.
+`/metrics` expõe formato Prometheus, sem dependências adicionais. Contagens de transações por status, eventos da outbox e lag vêm do PostgreSQL. A profundidade estimada da DLQ vem do SQS. Replays, conflitos de lock, retries observados e latência são locais a cada processo e reiniciam com o container. Coletar as três instâncias para interpretar o total. Os valores SQL são repetidos entre réplicas: não somar esses gauges ao agregá-los.
 
-O endpoint fica sem autenticação apenas para o ambiente local. Não publicar na internet.
-
-## Migrations
+##Migrations
 
 A migration inicial está em `src/database/migrations/2026100700000-InitialSchema.ts` e implementa `up` e `down`.
 
