@@ -75,7 +75,7 @@ O `NoopAuthGuard` representa um ponto de extensão para futura autenticação co
 
 ## 8. Testes e validação
 
-Em 10/10/2026, foram executados **24 testes com sucesso e nenhuma falha**, distribuídos em:
+Em 09/10/2026, foram executados **24 testes com sucesso e nenhuma falha**, distribuídos em:
 
 | Categoria | Testes aprovados |
 |---|---:|
